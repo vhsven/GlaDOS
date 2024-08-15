@@ -16,6 +16,7 @@ import yaml
 from jinja2 import Template
 from Levenshtein import distance
 from loguru import logger
+from scipy.signal import resample
 from sounddevice import CallbackFlags
 
 from glados import asr, tts, vad
@@ -23,6 +24,10 @@ from glados.llama import LlamaServer, LlamaServerConfig
 
 logger.remove(0)
 logger.add(sys.stderr, level="INFO")
+
+# make sure device is not selected as OS default, or it won't be available here
+sd.default.device = (4, 4)  # (input device id, output device id)
+print(sd.query_devices())
 
 ASR_MODEL = "ggml-medium-32-2.en.bin"
 VAD_MODEL = "silero_vad.onnx"
@@ -144,7 +149,12 @@ class Glados:
         if announcement:
             audio = self._tts.generate_speech_audio(announcement)
             logger.success(f"TTS text: {announcement}")
-            sd.play(audio, self._tts.rate)
+
+            original_sample_rate = 22050
+            new_sample_rate = self._tts.rate
+            number_of_samples = round(len(audio) * float(new_sample_rate) / original_sample_rate)
+            resampled_audio_data = resample(audio, number_of_samples)
+            sd.play(resampled_audio_data, self._tts.rate)
             if not self.interruptible:
                 sd.wait()
 
@@ -366,7 +376,11 @@ class Glados:
                     total_samples = len(audio)
 
                     if total_samples:
-                        sd.play(audio, self._tts.rate)
+                        original_sample_rate = 22050
+                        new_sample_rate = self._tts.rate
+                        number_of_samples = round(len(audio) * float(new_sample_rate) / original_sample_rate)
+                        resampled_audio_data = resample(audio, number_of_samples)
+                        sd.play(resampled_audio_data, self._tts.rate)
 
                         interrupted, percentage_played = self.percentage_played(
                             total_samples

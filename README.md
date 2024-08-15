@@ -136,3 +136,23 @@ You can test the systems by exploring the 'demo.ipynb'.
 <a href="https://trendshift.io/repositories/9828" target="_blank"><img src="https://trendshift.io/api/badge/repositories/9828" alt="dnhkng%2FGlaDOS | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
 [![Star History Chart](https://api.star-history.com/svg?repos=dnhkng/GlaDOS&type=Date)](https://star-history.com/#dnhkng/GlaDOS&Date)
+
+## Steps to reproduce
+
+- `sudo apt update && sudo apt install make gcc g++ espeak-ng`
+- `mamba create -n glados python=3.12 numpy scipy onnxruntime portaudio cuda-compiler=12.2 cuda-libraries-dev`
+- `mamba activate glados`
+- `pip install -r requirements_cuda.txt`
+- `git submodule update --init --recursive`
+- `cd submodules/whisper.cpp`
+- `find /usr -name libcuda.so`
+- add `-L/usr/lib/x86_64-linux-gnu` to line with `lcuda` in Makefile
+  - folder contains `libcuda.so`, which comes bundled with display drivers
+- `make clean`
+- `WHISPER_CUDA=1 make libwhisper.so -j`
+- `cd ../llama.cpp`
+- add `-L/usr/lib/x86_64-linux-gnu` to line with `lcuda` in Makefile
+- `make clean`
+- `make llama-server LLAMA_CUDA=1 CC=/usr/bin/gcc CXX=/usr/bin/g++ -j`  # use system gcc instead
+- `cd ../..`
+- `python glados.py`
